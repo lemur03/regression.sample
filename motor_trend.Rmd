@@ -1,0 +1,98 @@
+---
+title: "Motor Trend - An analysis of the miles per gallon"
+author: "A.N."
+date: "Saturday, August 16, 2014"
+output: html_document
+---
+```{r echo=FALSE,message=FALSE}
+library(ggplot2)
+library(gridExtra)
+library(corrgram)
+library(car)
+data(mtcars)
+mtcars$am <- as.factor(mtcars$am)
+levels(mtcars$am) <- c("A","M")
+```
+
+## Executive summary
+This analysis is based on the mtcars dataset. The objective is to analyse the relationship between a set of variables and the outcome miles per gallon(mpg) and try to answer to the following two questions:
+
+- Is an automatic or manual transmission better for MPG
+- Quantify the MPG difference between automatic and manual transmissions
+
+## Data analysis
+
+#### Which variables are correlated?
+
+On the [appendix 1](#app1), it's possible to see on the graphic above that ***mpg*** is highly correlated with ***vs***, ***am***, ***gear*** and ***qsec***; and negatively correlated with ***cyl***, ***disp*** and ***hp***.
+
+#### Let visualize the relation between mpg and am ?
+
+As we want to compare the impact of an automatic or manual car on the mile per gallon so we set the variable ***am*** as a factor. We can clear see on the [appendix 2](#app2) that the automatic car tend to have a lower mile per gallon than the manual cars. The relation between manual car and mile per gallon tend to be quite spread and right skewed.
+
+
+### Estimate the model
+```{r}
+fit<-lm(mpg~ am-1,data=mtcars)
+summary(fit)$coef
+```
+
+Looking at the coefficients, We estimate an expected increase of 17 miles for every mile increase of mile per gallon, for an automatic cars. For manual cars, we estimate an expected increase of 24 miles for every mile increase of mile per gallon.
+
+
+Let's include extra variables and see if it helps to explain the mpg.
+the others variables that will be included in the model are:
+
+- qsec,
+- the *10/wt* :  as wt is negatively correlated with mpg so we take the inverse.
+
+```{r}
+fit2 <- update(fit, mpg~ am-1 +  qsec)
+fit3 <- update(fit, mpg~ am-1 + qsec+I(10/wt))
+anova(fit, fit2,fit3)
+summary(fit3)$coef
+```
+
+Looking at the coefficient, all the variables from the third model have meaningful p-value. Also there is an important drop in the sum of squared residuals (RSS). Also the variance of the residual dropped from `r round(summary(fit)$sigma,2)` in the initial model to `r round(summary(fit3)$sigma,2)` in the model 3.
+
+
+
+
+## Appendix 
+**Appendix 1**<a name="app1"/>
+Kendall correlation map
+```{r appendix_correl,echo=FALSE,fig.width=10}
+mtcars$am <- as.numeric(mtcars$am)
+corrgram(cor(mtcars, use="complete.obs", method="kendall"))
+```
+
+**Appendix 2**<a name="app2"/>
+Relation between mpg and am
+```{r appendix_mpg_am, echo=FALSE,fig.width=10}
+mtcars$am <- as.factor(mtcars$am)
+p<-ggplot(mtcars,aes(y=mpg,x=am ))+
+  geom_point(aes(colour=am),shape=1, position=position_jitter(width=.05,height=.05)) 
+p2<-ggplot(mtcars,aes(y=mpg,x=am))+geom_boxplot()
+grid.arrange( p,p2,ncol=1)
+
+```
+
+**Appendix 3**<a name="app3"/>
+Residuals vs Fitted
+```{r appendix_residual, echo=FALSE,fig.width=10}
+data<- as.data.frame(cbind(fit3$fitted,fit3$resid,mtcars$am))
+colnames(data) <- c("fitted", "resid","am")
+ggplot(data, aes(fitted, resid),title="Residuals vs Fitted") +
+  geom_point(aes(color=am))  +
+  geom_smooth(method="loess",se=FALSE) +
+  geom_hline(linetype=2, size=.2) +
+  scale_x_continuous("Fitted Values") +
+  scale_y_continuous("Residual") 
+
+```
+
+**Appendix 4**<a name="app4"/>
+Normal Q-Q plot for model 3
+```{r appendix_qq_plot, echo=FALSE,fig.width=10}
+plot(fit3,which=2)
+```
