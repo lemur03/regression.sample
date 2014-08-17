@@ -5,6 +5,7 @@ date: "Saturday, August 16, 2014"
 output: html_document
 ---
 ```{r echo=FALSE,message=FALSE}
+options(width = 500)
 library(ggplot2)
 library(gridExtra)
 library(corrgram)
@@ -14,13 +15,13 @@ mtcars$am <- as.factor(mtcars$am)
 levels(mtcars$am) <- c("A","M")
 ```
 
-## Executive summary
+### Executive summary
 This analysis is based on the mtcars dataset. The objective is to analyse the relationship between a set of variables and the outcome miles per gallon(mpg) and try to answer to the following two questions:
 
 - Is an automatic or manual transmission better for MPG
 - Quantify the MPG difference between automatic and manual transmissions
 
-## Data analysis
+### Data analysis
 
 #### Which variables are correlated?
 
@@ -46,15 +47,30 @@ the others variables that will be included in the model are:
 - qsec,
 - the *10/wt* :  as wt is negatively correlated with mpg so we take the inverse.
 
-```{r}
+```{r echo=FALSE}
 fit2 <- update(fit, mpg~ am-1 +  qsec)
 fit3 <- update(fit, mpg~ am-1 + qsec+I(10/wt))
 anova(fit, fit2,fit3)
 summary(fit3)$coef
 ```
 
-Looking at the coefficient, all the variables from the third model have meaningful p-value. Also there is an important drop in the sum of squared residuals (RSS). Also the variance of the residual dropped from `r round(summary(fit)$sigma,2)` in the initial model to `r round(summary(fit3)$sigma,2)` in the model 3.
+Looking at the coefficient, all the variables from the third model have meaningful p-values. Also there is an important drop in the sum of squared residuals (RSS). Also the variance of the residual dropped from `r round(summary(fit)$sigma,2)` in the initial model to `r round(summary(fit3)$sigma,2)` in the model 3.
 
+#### The residuals
+
+Cannot see any pattern on the Residuals Vs Fitted values on the [appendix 3](#app3), which is a good thing. On the normal Q-Q plot [appendix 4](#app4), we can clearly see that few points at the tails (left and right) are not inline with the others. It's clear that the distribution of the residual is not normal.
+
+##### The influential residuals ?
+
+```{r echo=FALSE}
+inflm.SR <- influence.measures(fit3)
+#which(apply(inflm.SR$is.inf, 1, any))
+# which observations 'are' influential
+summary(inflm.SR) 
+```
+
+Those four influential points can be seen on the graphic in [appendix 5](#app5) and are impaction the regression relationship.
+***Maserati Bora***,***Fiat 128***, ***Merc 230*** have a high leverage and are impacting the fit. ***Lotus Europa*** has a high leverage too but is not impacting the fit.
 
 
 
@@ -95,4 +111,13 @@ ggplot(data, aes(fitted, resid),title="Residuals vs Fitted") +
 Normal Q-Q plot for model 3
 ```{r appendix_qq_plot, echo=FALSE,fig.width=10}
 plot(fit3,which=2)
+```
+
+
+**Appendix 5**<a name="app5"/>
+Influential residuals
+```{r echo=FALSE,fig.width=10, fig.height=12}
+par(mfrow=c(2,1))
+plot(rstudent(fit3) ~ hatvalues(fit3),main="Scatterplot of measures of leverage vs. standardized residuals")
+plot(cooks.distance(fit3) ~ hatvalues(fit3),main="Scatterplot of measures of leverage vs. cooks distance")
 ```
